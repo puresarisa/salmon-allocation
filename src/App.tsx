@@ -1,189 +1,178 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import './index.css';
-import { orders as mockOrders, products as mockProducts, customers as mockCustomers, OrderType } from './mockData';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useMemo } from "react";
+import { useInView } from "react-intersection-observer";
+import {
+  orders as mockOrders,
+  products,
+  customers,
+  orders,
+  OrderType,
+} from "./mockData";
+import { getCustomerName, getProductName,getProductPrice,getCustomerCredit } from "./utils/helpers";
+import Header from "./components/Header";
+import OrderCard from "./components/OrderCard";
+import "./index.css";
 
-// --- Reusable Order Card Component ---
-const OrderCard: React.FC<{
-  order: (typeof mockOrders)[0];
-  onManualAllocate: (orderId: string, value: number) => void;
-  getCustomerName: (id: string) => string;
-  getProductName: (id: string) => string;
-}> = ({ order, onManualAllocate, getCustomerName, getProductName }) => {
-  const [inputValue, setInputValue] = useState<number>(order.allocated_qty);
-
-  // Update input value when order data changes
-  useEffect(() => {
-    setInputValue(order.allocated_qty);
-  }, [order.allocated_qty]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    // Limit the input value to not exceed the requested quantity
-    const finalValue = isNaN(value) ? 0 : Math.min(value, order.quantity);
-    setInputValue(finalValue);
-    onManualAllocate(order.id, finalValue);
-  };
-
-  return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
-      <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-4">
-        <div className="text-xl font-bold text-gray-800">
-          ORDER-{order.id.split('_')[1]}
-        </div>
-        <div className={`
-          px-3 py-1 text-sm font-semibold rounded-full
-          ${order.order_type === OrderType.HIGH_PRIORITY ? 'bg-red-500 text-white' : 'bg-gray-700 text-white'}
-        `}>
-          {order.order_type.toUpperCase().replace('_', ' ')}
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-y-4 text-sm mb-6">
-        <div className="flex flex-col">
-          <span className="text-gray-500">Customer</span>
-          <span className="font-medium text-gray-900">{getCustomerName(order.customer_id)}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Credit Remaining</span>
-          <span className="font-medium text-gray-900">3,000.00 THB</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Closing</span>
-          <span className="font-medium text-gray-900">3,000.00 THB</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Product</span>
-          <span className="font-medium text-gray-900">{getProductName(order.product_id)}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Remark</span>
-          <span className="font-medium text-gray-900">1 day delivery Product</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Suggestion</span>
-          <span className="font-medium text-gray-900">{order.quantity} Unit</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Price Per Unit</span>
-          <span className="font-medium text-gray-900">515.75 THB</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Request Qty</span>
-          <span className="font-medium text-gray-900">{order.quantity} Unit</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-gray-500">Qty</span>
-          <input
-            type="number"
-            min="0"
-            max={order.quantity}
-            className="w-20 p-1 mt-1 border-b border-gray-400 focus:outline-none focus:border-blue-500"
-            value={inputValue}
-            onChange={handleChange}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main App Component ---
 function App() {
   const [orders, setOrders] = useState<typeof mockOrders>([]);
-  const [initialStock, setInitialStock] = useState(1500); // Set initial stock
-  
-  // Calculate remaining stock
+  const [displayedOrders, setDisplayedOrders] = useState<typeof mockOrders>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [initialStock, setInitialStock] = useState(1500);
+
+  const { ref, inView } = useInView();
+
+  const orderPriority: Record<OrderType, number> = {
+    [OrderType.EMERGENCY]: 1,
+    [OrderType.OVER_DUE]: 2,
+    [OrderType.STANDARD]: 3,
+    [OrderType.NEW]: 4,
+  };
+
+  const sortedOrders = useMemo(() => {
+    return [...mockOrders].sort((a, b) => {
+      const priorityA = orderPriority[a.order_type];
+      const priorityB = orderPriority[b.order_type];
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return new Date(a.order_date).getTime() - new Date(b.order_date).getTime();
+    });
+  }, []);
+
+  // --- Auto Allocation ---
+  useEffect(() => {
+    const customerCredits: Record<string, number> = {};
+    customers.forEach((c) => {
+      customerCredits[c.id] = c.credit_limit;
+    });
+
+    let currentStock = initialStock;
+
+    const allocatedOrders = sortedOrders.map((order) => {
+      let allocated_qty = 0;
+      if (currentStock > 0) {
+        const product = products.find((p) => p.id === order.product_id);
+        const customer = customers.find((c) => c.id === order.customer_id);
+
+        if (product && customer) {
+          const maxByRequest = order.quantity;
+          const maxByStock = currentStock;
+          const maxByCredit = Math.floor(
+            customerCredits[customer.id] / product.price
+          );
+
+          allocated_qty = Math.min(maxByRequest, maxByStock, maxByCredit);
+
+          currentStock -= allocated_qty;
+          customerCredits[customer.id] -= allocated_qty * product.price;
+        }
+      }
+      return { ...order, allocated_qty };
+    });
+
+    setOrders(allocatedOrders);
+    setDisplayedOrders(allocatedOrders.slice(0, pageSize));
+    setPage(1);
+  }, [initialStock, sortedOrders]);
+
+  // --- Infinite Scroll ---
+  useEffect(() => {
+    if (inView && orders.length > displayedOrders.length) {
+      const startIndex = page * pageSize;
+      const endIndex = startIndex + pageSize;
+      const nextOrders = orders.slice(startIndex, endIndex);
+      if (nextOrders.length > 0) {
+        setDisplayedOrders((prev) => [...prev, ...nextOrders]);
+        setPage((prev) => prev + 1);
+      }
+    }
+  }, [inView, page, orders, displayedOrders, pageSize]);
+
+  // --- Stock Calculation ---
   const totalAllocated = useMemo(() => {
     return orders.reduce((sum, order) => sum + (order.allocated_qty || 0), 0);
   }, [orders]);
 
   const totalStock = initialStock - totalAllocated;
 
-  // Calculate total price of all allocated units
+  // --- Price Calculation ---
   const totalPrice = useMemo(() => {
-    const pricePerUnit = 515.75;
-    const value = totalAllocated * pricePerUnit;
-    return new Intl.NumberFormat('th-TH', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    }).format(value);
-  }, [totalAllocated]);
+    return orders.reduce((sum, order) => {
+      const product = products.find((p) => p.id === order.product_id);
+      return sum + (order.allocated_qty || 0) * (product?.price || 0);
+    }, 0);
+  }, [orders]);
 
-  // Fetch initial data on component mount
-  useEffect(() => {
-    // Simulate fetching data from a server
-    // Sort orders by priority and then by date
-    const sortedOrders = [...mockOrders].sort((a, b) => {
-      if (a.order_type === OrderType.HIGH_PRIORITY && b.order_type !== OrderType.HIGH_PRIORITY) return -1;
-      if (a.order_type !== OrderType.HIGH_PRIORITY && b.order_type === OrderType.HIGH_PRIORITY) return 1;
-      return new Date(a.order_date).getTime() - new Date(b.order_date).getTime();
-    });
-
-    let currentStock = initialStock;
-    const initialAllocatedOrders = sortedOrders.map(order => {
-      let allocated_qty = 0;
-      if (currentStock > 0) {
-        allocated_qty = Math.min(order.quantity, currentStock);
-        currentStock -= allocated_qty;
-      }
-      return { ...order, allocated_qty };
-    });
-
-    setOrders(initialAllocatedOrders);
-  }, [initialStock]); // Rerun if initial stock changes
-
+  // --- Manual Allocation ---
   const handleManualAllocate = (orderId: string, value: number) => {
-    // Find the order to update
-    const updatedOrders = orders.map(order => {
+    const updatedOrders = orders.map((order) => {
       if (order.id === orderId) {
-        // Enforce the new business logic: Qty cannot exceed Request Qty
         if (value > order.quantity) {
-          return order; // Return original order to prevent invalid update
+          // ไม่ใช่ alert(), ใช้ modal แทน
+          console.error("Error: Allocation exceeds requested quantity!");
+          return order;
         }
         return { ...order, allocated_qty: value };
       }
       return order;
     });
 
-    // Check if total allocated exceeds initial stock
-    const newTotalAllocated = updatedOrders.reduce((sum, order) => sum + (order.allocated_qty || 0), 0);
+    const newTotalAllocated = updatedOrders.reduce(
+      (sum, order) => sum + (order.allocated_qty || 0),
+      0
+    );
     if (newTotalAllocated > initialStock) {
-      alert("Error: Total allocated units exceed available stock!");
+      // ไม่ใช่ alert(), ใช้ modal แทน
+      console.error("Error: Total allocated units exceed available stock!");
       return;
     }
 
-    // Update the state with the new orders
     setOrders(updatedOrders);
+
+    const updatedDisplayed = displayedOrders.map((order) => {
+      const updated = updatedOrders.find((o) => o.id === order.id);
+      return updated || order;
+    });
+    setDisplayedOrders(updatedDisplayed);
   };
-
-  // Helper function to get customer name
-  const getCustomerName = (customerId: string) => mockCustomers.find(c => c.id === customerId)?.name || 'Unknown';
-
-  // Helper function to get product name
-  const getProductName = (productId: string) => mockProducts.find(p => p.id === productId)?.name || 'Unknown';
-
+  
   return (
     <div className="flex flex-col gap-4 p-8 bg-gray-100 min-h-screen font-sans">
       <div className="text-3xl font-bold mb-4">Allocation</div>
-      <div className="text-xl font-semibold text-gray-700">
-        Salmon <span className="text-2xl font-bold text-gray-900">{totalStock}</span> Unit
-        <span className="ml-8">Total</span> <span className="text-2xl font-bold text-gray-900">{totalPrice}</span> THB
-      </div>
-
+      <Header totalStock={totalStock} totalPrice={totalPrice} />
       <div className="flex flex-col gap-4">
-        {orders.map((order) => (
-          <OrderCard
-            key={order.id}
-            order={order}
-            onManualAllocate={handleManualAllocate}
-            getCustomerName={getCustomerName}
-            getProductName={getProductName}
-          />
-        ))}
+        {displayedOrders.map((order) => {
+          const product = products.find((p) => p.id === order.product_id);
+          const customer = customers.find((c) => c.id === order.customer_id);
+
+          const customerClosing = orders.reduce((sum, o) => {
+            if (o.customer_id === order.customer_id) {
+              const p = products.find((prod) => prod.id === o.product_id);
+              return sum + (o.allocated_qty || 0) * (p?.price || 0);
+            }
+            return sum;
+          }, 0);
+
+          return (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onManualAllocate={handleManualAllocate}
+              customerName={getCustomerName(order.customer_id)}
+              productName={getProductName(order.product_id)}
+              customerCredit={getCustomerCredit(order.customer_id)}
+              productPrice={product?.price || 0}
+              customerClosing={customerClosing}
+            />
+          );
+        })}
       </div>
-      <div className="text-center text-gray-500 my-8">
-        All orders loaded.
-      </div>
+      {displayedOrders.length < orders.length && (
+        <div
+          ref={ref}
+          className="h-10 flex items-center justify-center text-gray-400"
+        >
+          Loading more...
+        </div>
+      )}
     </div>
   );
 }

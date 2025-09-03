@@ -1,165 +1,83 @@
-// Interfaces for the data to ensure type safety with TypeScript.
-interface Customer {
+export const OrderType = {
+  EMERGENCY: 'emergency',
+  OVER_DUE: 'over_due',
+  STANDARD: 'standard',
+  NEW: 'new',
+} as const;
+
+export type OrderType = typeof OrderType[keyof typeof OrderType];
+
+export interface Customer {
   id: string;
   name: string;
   credit_limit: number;
 }
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
-  unit_price: number;
+  price: number;
 }
 
-export const OrderType = {
-  HIGH_PRIORITY: 'high_priority',
-  STANDARD: 'standard',
-} as const;
-
-export type OrderType = typeof OrderType[keyof typeof OrderType];
-
-interface Order {
+export interface Order {
   id: string;
   customer_id: string;
   product_id: string;
   quantity: number;
-  order_date: string; // Use ISO 8601 format (YYYY-MM-DD)
-  allocated_qty: number;
+  allocated_qty: number; // For tracking allocated units
+  order_date: string;
   order_type: OrderType;
+  // A helper property to hold the original request quantity
+  requested_qty: number;
 }
 
-// -----------------------------------------------------------
-// MOCK DATA
-// -----------------------------------------------------------
-
-export const customers: Customer[] = [
-  { id: 'cust_001', name: 'Stark Industries', credit_limit: 500 },
-  { id: 'cust_002', name: 'Wayne Enterprises', credit_limit: 350 },
-  { id: 'cust_003', name: 'LexCorp', credit_limit: 200 },
-  { id: 'cust_004', name: 'Oscorp', credit_limit: 400 },
+export const orders: Order[] = [
+  { id: "1001", customer_id: "C1", product_id: "P1", quantity: 60,  allocated_qty: 0, order_date: "2024-04-23T10:00:00Z", order_type: OrderType.NEW,       requested_qty: 60 },
+  { id: "1002", customer_id: "C2", product_id: "P1", quantity: 80,  allocated_qty: 0, order_date: "2024-04-22T12:00:00Z", order_type: OrderType.NEW,       requested_qty: 80 },
+  { id: "1003", customer_id: "C3", product_id: "P1", quantity: 120, allocated_qty: 0, order_date: "2024-04-21T14:00:00Z", order_type: OrderType.NEW,       requested_qty: 120 },
+  { id: "1004", customer_id: "C1", product_id: "P2", quantity: 40,  allocated_qty: 0, order_date: "2024-04-20T16:00:00Z", order_type: OrderType.NEW,       requested_qty: 40 },
+  { id: "1005", customer_id: "C2", product_id: "P1", quantity: 150, allocated_qty: 0, order_date: "2024-04-19T18:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 150 },
+  { id: "1006", customer_id: "C4", product_id: "P1", quantity: 75,  allocated_qty: 0, order_date: "2024-04-18T20:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 75 },
+  { id: "1007", customer_id: "C5", product_id: "P1", quantity: 100, allocated_qty: 0, order_date: "2024-04-17T22:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 100 },
+  { id: "1008", customer_id: "C6", product_id: "P2", quantity: 90,  allocated_qty: 0, order_date: "2024-04-16T10:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 90 },
+  { id: "1009", customer_id: "C7", product_id: "P2", quantity: 200, allocated_qty: 0, order_date: "2024-04-15T12:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 200 },
+  { id: "1010", customer_id: "C8", product_id: "P2", quantity: 50,  allocated_qty: 0, order_date: "2024-04-14T14:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 50 },
+  { id: "1011", customer_id: "C9", product_id: "P2",quantity: 110, allocated_qty: 0, order_date: "2024-04-13T16:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 110 },
+  { id: "1012", customer_id: "C1", product_id: "P2", quantity: 30,  allocated_qty: 0, order_date: "2024-04-12T18:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 30 },
+  { id: "1013", customer_id: "C1", product_id: "P1", quantity: 180, allocated_qty: 0, order_date: "2024-04-11T20:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 180 },
+  { id: "1014", customer_id: "C2", product_id: "P1", quantity: 95,  allocated_qty: 0, order_date: "2024-04-10T22:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 95 },
+  { id: "1015", customer_id: "C3", product_id: "P1", quantity: 250, allocated_qty: 0, order_date: "2024-04-09T10:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 250 },
+    { id: "1051", customer_id: "C1", product_id: "P1", quantity: 60,  allocated_qty: 0, order_date: "2024-04-23T10:00:00Z", order_type: OrderType.NEW,       requested_qty: 60 },
+  { id: "1052", customer_id: "C2", product_id: "P1", quantity: 80,  allocated_qty: 0, order_date: "2024-04-22T12:00:00Z", order_type: OrderType.NEW,       requested_qty: 80 },
+  { id: "1053", customer_id: "C3", product_id: "P1", quantity: 120, allocated_qty: 0, order_date: "2024-04-21T14:00:00Z", order_type: OrderType.NEW,       requested_qty: 120 },
+  { id: "1054", customer_id: "C1", product_id: "P2", quantity: 40,  allocated_qty: 0, order_date: "2024-04-20T16:00:00Z", order_type: OrderType.NEW,       requested_qty: 40 },
+  { id: "1055", customer_id: "C2", product_id: "P1", quantity: 150, allocated_qty: 0, order_date: "2024-04-19T18:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 150 },
+  { id: "1056", customer_id: "C4", product_id: "P1", quantity: 75,  allocated_qty: 0, order_date: "2024-04-18T20:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 75 },
+  { id: "1057", customer_id: "C5", product_id: "P1", quantity: 100, allocated_qty: 0, order_date: "2024-04-17T22:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 100 },
+  { id: "1058", customer_id: "C6", product_id: "P2", quantity: 90,  allocated_qty: 0, order_date: "2024-04-16T10:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 90 },
+  { id: "1059", customer_id: "C7", product_id: "P2", quantity: 200, allocated_qty: 0, order_date: "2024-04-15T12:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 200 },
+  { id: "1510", customer_id: "C8", product_id: "P2", quantity: 50,  allocated_qty: 0, order_date: "2024-04-14T14:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 50 },
+  { id: "1511", customer_id: "C9", product_id: "P2",quantity: 110, allocated_qty: 0, order_date: "2024-04-13T16:00:00Z", order_type: OrderType.EMERGENCY, requested_qty: 110 },
+  { id: "1512", customer_id: "C1", product_id: "P2", quantity: 30,  allocated_qty: 0, order_date: "2024-04-12T18:00:00Z", order_type: OrderType.STANDARD,  requested_qty: 30 },
+  { id: "1513", customer_id: "C1", product_id: "P1", quantity: 180, allocated_qty: 0, order_date: "2024-04-11T20:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 180 },
+  { id: "1514", customer_id: "C2", product_id: "P1", quantity: 95,  allocated_qty: 0, order_date: "2024-04-10T22:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 95 },
+  { id: "1515", customer_id: "C3", product_id: "P1", quantity: 250, allocated_qty: 0, order_date: "2024-04-09T10:00:00Z", order_type: OrderType.OVER_DUE,   requested_qty: 250 },
 ];
 
 export const products: Product[] = [
-  { id: 'prod_001', name: 'Fresh Atlantic Salmon', unit_price: 15.00 },
-  { id: 'prod_002', name: 'Smoked Salmon', unit_price: 25.00 },
+  { id: "P1", name: "Salmon A", price: 515.75 },
+  { id: "P2", name: "Salmon B", price: 600.00 },
 ];
 
-export const orders: Order[] = [
-  {
-    id: 'ord_001',
-    customer_id: 'cust_001',
-    product_id: 'prod_001',
-    quantity: 100,
-    order_date: '2025-08-25',
-    allocated_qty: 0,
-    order_type: OrderType.HIGH_PRIORITY,
-  },
-  {
-    id: 'ord_002',
-    customer_id: 'cust_002',
-    product_id: 'prod_001',
-    quantity: 150,
-    order_date: '2025-08-26',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_003',
-    customer_id: 'cust_003',
-    product_id: 'prod_002',
-    quantity: 50,
-    order_date: '2025-08-27',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_004',
-    customer_id: 'cust_001',
-    product_id: 'prod_001',
-    quantity: 200,
-    order_date: '2025-08-28',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_005',
-    customer_id: 'cust_004',
-    product_id: 'prod_002',
-    quantity: 120,
-    order_date: '2025-08-29',
-    allocated_qty: 0,
-    order_type: OrderType.HIGH_PRIORITY,
-  },
-  {
-    id: 'ord_006',
-    customer_id: 'cust_002',
-    product_id: 'prod_001',
-    quantity: 80,
-    order_date: '2025-08-30',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_007',
-    customer_id: 'cust_003',
-    product_id: 'prod_001',
-    quantity: 90,
-    order_date: '2025-08-31',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_008',
-    customer_id: 'cust_004',
-    product_id: 'prod_001',
-    quantity: 110,
-    order_date: '2025-09-01',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_009',
-    customer_id: 'cust_001',
-    product_id: 'prod_002',
-    quantity: 75,
-    order_date: '2025-09-02',
-    allocated_qty: 0,
-    order_type: OrderType.HIGH_PRIORITY,
-  },
-  {
-    id: 'ord_010',
-    customer_id: 'cust_002',
-    product_id: 'prod_002',
-    quantity: 130,
-    order_date: '2025-09-03',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_011',
-    customer_id: 'cust_003',
-    product_id: 'prod_002',
-    quantity: 60,
-    order_date: '2025-09-04',
-    allocated_qty: 0,
-    order_type: OrderType.HIGH_PRIORITY,
-  },
-  {
-    id: 'ord_012',
-    customer_id: 'cust_004',
-    product_id: 'prod_001',
-    quantity: 140,
-    order_date: '2025-09-05',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
-  {
-    id: 'ord_013',
-    customer_id: 'cust_001',
-    product_id: 'prod_001',
-    quantity: 180,
-    order_date: '2025-09-06',
-    allocated_qty: 0,
-    order_type: OrderType.STANDARD,
-  },
+export const customers: Customer[] = [
+  { id: "C1", name: "Alice", credit_limit: 5000 },
+  { id: "C2", name: "Bob", credit_limit: 4000 },
+  { id: "C3", name: "Charlie", credit_limit: 3000 },
+  { id: "C4", name: "Diana", credit_limit: 2500 },
+  { id: "C5", name: "Eve", credit_limit: 6000 },
+  { id: "C6", name: "Frank", credit_limit: 3500 },
+  { id: "C7", name: "Grace", credit_limit: 7000 },
+  { id: "C8", name: "Henry", credit_limit: 2800 },
+  { id: "C9", name: "Ivy", credit_limit: 3200 },
+  { id: "C10", name: "Jack", credit_limit: 2600 },
 ];
