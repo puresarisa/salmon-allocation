@@ -88,8 +88,23 @@ function App() {
       return { ...order, allocated_qty };
     });
 
-    setOrders(allocatedOrders);
-    setDisplayedOrders(allocatedOrders.slice(0, pageSize));
+    // Sort for display: prioritize orders with allocated_qty > 0
+    const sortedForDisplay = [...allocatedOrders].sort((a, b) => {
+      const aAllocated = a.allocated_qty || 0;
+      const bAllocated = b.allocated_qty || 0;
+
+      if (aAllocated > 0 && bAllocated === 0) return -1;
+      if (aAllocated === 0 && bAllocated > 0) return 1;
+
+      // Fall back to the original sorting
+      const priorityA = orderPriority[a.order_type];
+      const priorityB = orderPriority[b.order_type];
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return new Date(a.order_date).getTime() - new Date(b.order_date).getTime();
+    });
+
+    setOrders(sortedForDisplay);
+    setDisplayedOrders(sortedForDisplay.slice(0, pageSize));
     setPage(1);
   }, [initialStock, sortedOrders]);
 
