@@ -4,10 +4,10 @@ import {
   orders as mockOrders,
   products,
   customers,
-  orders,
   OrderType,
+  type Order,
 } from "./mockData";
-import { getCustomerName, getProductName,getProductPrice,getCustomerCredit } from "./utils/helpers";
+import { getCustomerName, getProductName, getProductPrice, getCustomerCredit } from "./utils/helpers";
 import Header from "./components/Header";
 import OrderCard from "./components/OrderCard";
 import "./index.css";
@@ -45,24 +45,44 @@ function App() {
     });
 
     let currentStock = initialStock;
+    const tempOrders: Order[] = JSON.parse(JSON.stringify(sortedOrders)); // Create a deep copy
 
-    const allocatedOrders = sortedOrders.map((order) => {
-      let allocated_qty = 0;
+    // First Pass: Fair Allocation - give at least one item to each customer if possible
+    const customersWithOrders = [...new Set(tempOrders.map((order: Order) => order.customer_id))];
+    const firstAllocationPrice = products.find(p => p.id === 'P1')?.price || 0;
+
+    for (const customerId of customersWithOrders) {
+      if (currentStock > 0 && customerCredits[customerId] >= firstAllocationPrice) {
+        const firstOrder = tempOrders.find((order: Order) => order.customer_id === customerId);
+        if (firstOrder) {
+          firstOrder.allocated_qty = 1;
+          currentStock -= 1;
+          customerCredits[customerId] -= firstAllocationPrice;
+        }
+      }
+    }
+
+    // Second Pass: Allocate the rest based on priority
+    const allocatedOrders = tempOrders.map((order: Order) => {
+      let allocated_qty = order.allocated_qty || 0;
       if (currentStock > 0) {
         const product = products.find((p) => p.id === order.product_id);
         const customer = customers.find((c) => c.id === order.customer_id);
 
         if (product && customer) {
-          const maxByRequest = order.quantity;
+          const maxByRequest = order.quantity - allocated_qty; // remaining request
           const maxByStock = currentStock;
           const maxByCredit = Math.floor(
-            customerCredits[customer.id] / product.price
+            (customerCredits[customer.id]) / product.price
           );
+          
+          const allocationAmount = Math.min(maxByRequest, maxByStock, maxByCredit);
 
-          allocated_qty = Math.min(maxByRequest, maxByStock, maxByCredit);
-
-          currentStock -= allocated_qty;
-          customerCredits[customer.id] -= allocated_qty * product.price;
+          if (allocationAmount > 0) {
+            allocated_qty += allocationAmount;
+            currentStock -= allocationAmount;
+            customerCredits[customer.id] -= allocationAmount * product.price;
+          }
         }
       }
       return { ...order, allocated_qty };
@@ -106,7 +126,6 @@ function App() {
     const updatedOrders = orders.map((order) => {
       if (order.id === orderId) {
         if (value > order.quantity) {
-          // ไม่ใช่ alert(), ใช้ modal แทน
           console.error("Error: Allocation exceeds requested quantity!");
           return order;
         }
@@ -120,7 +139,6 @@ function App() {
       0
     );
     if (newTotalAllocated > initialStock) {
-      // ไม่ใช่ alert(), ใช้ modal แทน
       console.error("Error: Total allocated units exceed available stock!");
       return;
     }

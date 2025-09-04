@@ -1,5 +1,4 @@
 import type { FC } from 'react';
-
 import { OrderType } from '../mockData';
 
 interface OrderCardProps {
@@ -13,7 +12,6 @@ interface OrderCardProps {
 }
 
 const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, productName, customerCredit, productPrice, customerClosing }) => {
-
   const handleManualAllocate = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const qty = value === '' ? 0 : parseInt(value, 10);
@@ -27,11 +25,7 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
     if (order.order_type === OrderType.EMERGENCY) {
       color = 'bg-red-600';
     } else if (order.order_type === OrderType.OVER_DUE) {
-    return (
-      <span className="ml-2 px-2 py-1 bg-orange-500 text-white text-xs font-semibold rounded-full uppercase">
-        {order.order_type.replace('_', ' ')}
-      </span>
-    );
+      color = 'bg-orange-500';
     } else if (order.order_type === OrderType.NEW) {
       color = 'bg-blue-600';
     }
@@ -58,7 +52,7 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
         </div>
         <div className="col-span-1">
           <p className="text-sm text-gray-500">Credit Remaining</p>
-          <p className="text-base font-semibold">{customerCredit - customerClosing} THB </p>
+          <p className="text-base font-semibold">{customerCredit - customerClosing} THB</p>
         </div>
         <div className="col-span-1">
           <p className="text-sm text-gray-500">Closing</p>
@@ -80,7 +74,7 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
 
         <div className="col-span-1">
           <p className="text-sm text-gray-500">Price Per Unit</p>
-          <p className="text-base font-semibold">{productPrice} THB </p>
+          <p className="text-base font-semibold">{productPrice} THB</p>
         </div>
         <div className="col-span-1">
           <p className="text-sm text-gray-500">Request Qty</p>
