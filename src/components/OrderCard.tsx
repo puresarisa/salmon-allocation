@@ -1,3 +1,4 @@
+import React from 'react';
 import type { FC } from 'react';
 import { OrderType } from '../mockData';
 
@@ -12,8 +13,9 @@ interface OrderCardProps {
 }
 
 const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, productName, customerCredit, productPrice, customerClosing }) => {
-  const handleManualAllocate = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    // Parse the input value to a number. If it's an empty string, treat it as 0.
     const qty = value === '' ? 0 : parseInt(value, 10);
     if (!isNaN(qty)) {
       onManualAllocate(order.id, qty);
@@ -31,10 +33,14 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
     }
     return (
       <span className={`ml-2 px-2 py-1 ${color} text-white text-xs font-semibold rounded-full uppercase`}>
-        {order.order_type.replace('_', ' ')}
+        {order.order_type.toUpperCase().replace('_', ' ')}
       </span>
     );
   };
+
+  const formattedCustomerCredit = new Intl.NumberFormat('en-US').format(customerCredit);
+  const formattedCustomerClosing = new Intl.NumberFormat('en-US').format(customerClosing);
+  const formattedProductPrice = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(productPrice);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-4 font-inter text-gray-800">
@@ -69,7 +75,8 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
         </div>
         <div className="col-span-1">
           <p className="text-sm text-gray-500">Suggestion</p>
-          <p className="text-base font-semibold">{order.allocated_qty} Unit</p>
+          {/* Suggestion แสดงค่าจาก auto allocation เท่านั้น */}
+          <p className="text-base font-semibold">{order.suggested_qty} Unit</p>
         </div>
 
         <div className="col-span-1">
@@ -81,13 +88,16 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
           <p className="text-base font-semibold">{order.quantity} Unit</p>
         </div>
         <div className="col-span-1 flex flex-col">
-          <label htmlFor={`qty-${order.id}`} className="text-sm text-gray-500">Qty</label>
+          <label htmlFor={`qty-${order.id}`} className="text-sm text-gray-500">
+            Qty
+          </label>
           <input
             id={`qty-${order.id}`}
             type="number"
-            value={order.allocated_qty === 0 ? '' : order.allocated_qty}
-            onChange={handleManualAllocate}
+            value={order.allocated_qty}
+            onChange={handleInputChange}
             max={order.quantity}
+            min="0"
             className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

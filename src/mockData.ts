@@ -32,7 +32,7 @@ export interface Order {
 
 export const products: Product[] = [
   { id: "P1", name: "Salmon A", price: 515.75 },
-  { id: "P2", name: "Salmon B", price: 600.00 },
+  { id: "P2", name: "Salmon B", price: 750.00 },
 ];
 
 export const customers: Customer[] = [

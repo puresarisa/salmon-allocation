@@ -17,7 +17,8 @@ function App() {
   const [displayedOrders, setDisplayedOrders] = useState<typeof mockOrders>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [initialStock, setInitialStock] = useState(1500);
+  const [initialStock, setInitialStock] = useState(150);
+  const [versionKey, setVersionKey] = useState(0); // <-- Add versionKey state
 
   const { ref, inView } = useInView();
 
@@ -49,44 +50,54 @@ function App() {
 
     // First Pass: Fair Allocation - give at least one item to each customer if possible
     const customersWithOrders = [...new Set(tempOrders.map((order: Order) => order.customer_id))];
-    const firstAllocationPrice = products.find(p => p.id === 'P1')?.price || 0;
 
     for (const customerId of customersWithOrders) {
-      if (currentStock > 0 && customerCredits[customerId] >= firstAllocationPrice) {
-        const firstOrder = tempOrders.find((order: Order) => order.customer_id === customerId);
-        if (firstOrder) {
+      const firstOrder = tempOrders.find((order: Order) => order.customer_id === customerId);
+      if (firstOrder) {
+        const product = products.find(p => p.id === firstOrder.product_id);
+        const price = product?.price || 0;
+        if (currentStock > 0 && customerCredits[customerId] >= price) {
           firstOrder.allocated_qty = 1;
           currentStock -= 1;
-          customerCredits[customerId] -= firstAllocationPrice;
+          customerCredits[customerId] -= price;
         }
       }
     }
 
     // Second Pass: Allocate the rest based on priority
-    const allocatedOrders = tempOrders.map((order: Order) => {
-      let allocated_qty = order.allocated_qty || 0;
-      if (currentStock > 0) {
-        const product = products.find((p) => p.id === order.product_id);
-        const customer = customers.find((c) => c.id === order.customer_id);
+const allocatedOrders = tempOrders.map((order: Order) => {
+  let allocated_qty = order.allocated_qty || 0;
+  if (currentStock > 0) {
+    const product = products.find((p) => p.id === order.product_id);
+    const customer = customers.find((c) => c.id === order.customer_id);
 
-        if (product && customer) {
-          const maxByRequest = order.quantity - allocated_qty; // remaining request
-          const maxByStock = currentStock;
-          const maxByCredit = Math.floor(
-            (customerCredits[customer.id]) / product.price
-          );
-          
-          const allocationAmount = Math.min(maxByRequest, maxByStock, maxByCredit);
+    if (product && customer) {
+      const maxByRequest = order.quantity - allocated_qty;
+      const maxByStock = currentStock;
+      const maxByCredit = Math.floor(customerCredits[customer.id] / product.price);
 
-          if (allocationAmount > 0) {
-            allocated_qty += allocationAmount;
-            currentStock -= allocationAmount;
-            customerCredits[customer.id] -= allocationAmount * product.price;
-          }
+      const allocationAmount = Math.min(maxByRequest, maxByStock, maxByCredit);
+
+      if (allocationAmount > 0) {
+        allocated_qty += allocationAmount;
+        currentStock -= allocationAmount;
+        customerCredits[customer.id] -= allocationAmount * product.price;
+
+        // Prevent credit from going below zero
+        if (customerCredits[customer.id] < 0) {
+          // Rollback allocation that exceeded credit
+          const overAllocated = Math.ceil(Math.abs(customerCredits[customer.id]) / product.price);
+          allocated_qty -= overAllocated;
+          currentStock += overAllocated;
+          customerCredits[customer.id] = 0;
         }
       }
-      return { ...order, allocated_qty };
-    });
+    }
+  }
+
+  return { ...order, allocated_qty, suggested_qty: allocated_qty };
+});
+
 
     // Sort for display: prioritize orders with allocated_qty > 0
     const sortedForDisplay = [...allocatedOrders].sort((a, b) => {
@@ -106,7 +117,7 @@ function App() {
     setOrders(sortedForDisplay);
     setDisplayedOrders(sortedForDisplay.slice(0, pageSize));
     setPage(1);
-  }, [initialStock, sortedOrders]);
+  }, [initialStock, sortedOrders, versionKey]); // <-- Add versionKey as dependency
 
   // --- Infinite Scroll ---
   useEffect(() => {
@@ -170,6 +181,13 @@ function App() {
   return (
     <div className="flex flex-col gap-4 p-8 bg-gray-100 min-h-screen font-sans">
       <div className="text-3xl font-bold mb-4">Allocation</div>
+      {/* --- Version Key Button --- */}
+      <button
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-fit"
+        onClick={() => setVersionKey((prev) => prev + 1)}
+      >
+        Refresh Data (versionKey: {versionKey})
+      </button>
       <Header totalStock={totalStock} totalPrice={totalPrice} />
       <div className="flex flex-col gap-4">
         {displayedOrders.map((order) => {
