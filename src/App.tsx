@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useInView } from "react-intersection-observer";
 import {
   orders as mockOrders,
@@ -7,9 +7,10 @@ import {
   OrderType,
   type Order,
 } from "./mockData";
-import { getCustomerName, getProductName, getProductPrice, getCustomerCredit } from "./utils/helpers";
+import { getCustomerName, getProductName, getCustomerCredit } from "./utils/helpers";
 import Header from "./components/Header";
 import OrderCard from "./components/OrderCard";
+import ErrorModal from "./components/ErrorModal";
 import "./index.css";
 
 function App() {
@@ -17,8 +18,10 @@ function App() {
   const [displayedOrders, setDisplayedOrders] = useState<typeof mockOrders>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [initialStock, setInitialStock] = useState(150);
-  const [versionKey, setVersionKey] = useState(0); // <-- Add versionKey state
+  const [initialStock] = useState(150);
+  const [versionKey, setVersionKey] = useState(0); 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   const { ref, inView } = useInView();
 
@@ -46,7 +49,7 @@ function App() {
     });
 
     let currentStock = initialStock;
-    const tempOrders: Order[] = JSON.parse(JSON.stringify(sortedOrders)); // Create a deep copy
+    const tempOrders: Order[] = JSON.parse(JSON.stringify(sortedOrders)); 
 
     // First Pass: Fair Allocation - give at least one item to each customer if possible
     const customersWithOrders = [...new Set(tempOrders.map((order: Order) => order.customer_id))];
@@ -72,7 +75,7 @@ const allocatedOrders = tempOrders.map((order: Order) => {
     const customer = customers.find((c) => c.id === order.customer_id);
 
     if (product && customer) {
-      const maxByRequest = order.quantity - allocated_qty;
+      const maxByRequest = order.request_qty - allocated_qty;
       const maxByStock = currentStock;
       const maxByCredit = Math.floor(customerCredits[customer.id] / product.price);
 
@@ -83,9 +86,7 @@ const allocatedOrders = tempOrders.map((order: Order) => {
         currentStock -= allocationAmount;
         customerCredits[customer.id] -= allocationAmount * product.price;
 
-        // Prevent credit from going below zero
         if (customerCredits[customer.id] < 0) {
-          // Rollback allocation that exceeded credit
           const overAllocated = Math.ceil(Math.abs(customerCredits[customer.id]) / product.price);
           allocated_qty -= overAllocated;
           currentStock += overAllocated;
@@ -117,7 +118,7 @@ const allocatedOrders = tempOrders.map((order: Order) => {
     setOrders(sortedForDisplay);
     setDisplayedOrders(sortedForDisplay.slice(0, pageSize));
     setPage(1);
-  }, [initialStock, sortedOrders, versionKey]); // <-- Add versionKey as dependency
+  }, [initialStock, sortedOrders, versionKey]);
 
   // --- Infinite Scroll ---
   useEffect(() => {
@@ -151,8 +152,9 @@ const allocatedOrders = tempOrders.map((order: Order) => {
   const handleManualAllocate = (orderId: string, value: number) => {
     const updatedOrders = orders.map((order) => {
       if (order.id === orderId) {
-        if (value > order.quantity) {
-          console.error("Error: Allocation exceeds requested quantity!");
+        if (value > order.request_qty) {
+          setErrorMessage("Allocation exceeds requested request_qty!");
+          setShowModal(true);
           return order;
         }
         return { ...order, allocated_qty: value };
@@ -165,8 +167,34 @@ const allocatedOrders = tempOrders.map((order: Order) => {
       0
     );
     if (newTotalAllocated > initialStock) {
-      console.error("Error: Total allocated units exceed available stock!");
+      setErrorMessage("Total allocated units exceed available stock!");
+      setShowModal(true);
       return;
+    }
+
+    // --- Check credit constraint --- 
+    const orderToUpdate = orders.find((order) => order.id === orderId);
+    if (orderToUpdate) {
+      const product = products.find((p) => p.id === orderToUpdate.product_id);
+      const customer = customers.find((c) => c.id === orderToUpdate.customer_id);
+      if (product && customer) {
+        const allocatedAmount = value * product.price;
+        const otherAllocated = orders
+          .filter(
+            (order) =>
+              order.customer_id === customer.id &&
+              order.id !== orderId
+          )
+          .reduce((sum, order) => {
+            const prod = products.find((p) => p.id === order.product_id);
+            return sum + (order.allocated_qty || 0) * (prod?.price || 0);
+          }, 0);
+        if (allocatedAmount + otherAllocated > customer.credit_limit) {
+          setErrorMessage("Allocation exceeds customer's credit limit!");
+          setShowModal(true);
+          return;
+        }
+      }
     }
 
     setOrders(updatedOrders);
@@ -177,11 +205,20 @@ const allocatedOrders = tempOrders.map((order: Order) => {
     });
     setDisplayedOrders(updatedDisplayed);
   };
-  
+
+  useEffect(() => {
+    if (showModal) {
+      const timer = setTimeout(() => {
+        setShowModal(false);
+        setErrorMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showModal]);
+
   return (
     <div className="flex flex-col gap-4 p-8 bg-gray-100 min-h-screen font-sans">
       <div className="text-3xl font-bold mb-4">Allocation</div>
-      {/* --- Version Key Button --- */}
       <button
         className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-fit"
         onClick={() => setVersionKey((prev) => prev + 1)}
@@ -189,10 +226,19 @@ const allocatedOrders = tempOrders.map((order: Order) => {
         Refresh Data (versionKey: {versionKey})
       </button>
       <Header totalStock={totalStock} totalPrice={totalPrice} />
+
+      <ErrorModal
+        show={showModal}
+        message={errorMessage}
+        onClose={() => {
+          setShowModal(false);
+          setErrorMessage(null);
+        }}
+      />
+
       <div className="flex flex-col gap-4">
         {displayedOrders.map((order) => {
           const product = products.find((p) => p.id === order.product_id);
-          const customer = customers.find((c) => c.id === order.customer_id);
 
           const customerClosing = orders.reduce((sum, o) => {
             if (o.customer_id === order.customer_id) {
