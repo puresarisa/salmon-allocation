@@ -21,7 +21,7 @@ function App() {
   const [displayedOrders, setDisplayedOrders] = useState<typeof mockOrders>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [initialStock] = useState(150);
+  const [initialStock] = useState(450);
   const [versionKey, setVersionKey] = useState(0); 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -59,9 +59,22 @@ function App() {
       orderPriority
     );
 
+    // Intelligent prefetching for initial loading
+    let visibleOrders: typeof mockOrders = [];
+    let totalRequested = 0;
+    let i = 0;
+    while (
+      i < allocatedOrders.length &&
+      (visibleOrders.length < pageSize || totalRequested < initialStock)
+    ) {
+      visibleOrders.push(allocatedOrders[i]);
+      totalRequested += allocatedOrders[i].request_qty;
+      i++;
+    }
+
     setOrders(allocatedOrders);
-    setDisplayedOrders(allocatedOrders.slice(0, pageSize));
-    setPage(1);
+    setDisplayedOrders(visibleOrders);
+    setPage(Math.ceil(visibleOrders.length / pageSize));
   }, [initialStock, sortedOrders, versionKey]);
 
   // --- Infinite Scroll ---
@@ -88,7 +101,8 @@ function App() {
   const totalPrice = useMemo(() => {
     return orders.reduce((sum, order) => {
       const product = products.find((p) => p.id === order.product_id);
-      return sum + (order.allocated_qty || 0) * (product?.price || 0);
+      const price = product?.price[order.order_type] ?? 0;
+      return sum + (order.allocated_qty || 0) * price;
     }, 0);
   }, [orders]);
 
@@ -121,8 +135,9 @@ function App() {
     if (orderToUpdate) {
       const product = products.find((p) => p.id === orderToUpdate.product_id);
       const customer = customers.find((c) => c.id === orderToUpdate.customer_id);
+      const price = product?.price[orderToUpdate.order_type] ?? 0;
       if (product && customer) {
-        const allocatedAmount = value * product.price;
+        const allocatedAmount = value * price;
         const otherAllocated = orders
           .filter(
             (order) =>
@@ -131,7 +146,8 @@ function App() {
           )
           .reduce((sum, order) => {
             const prod = products.find((p) => p.id === order.product_id);
-            return sum + (order.allocated_qty || 0) * (prod?.price || 0);
+            const prodPrice = prod?.price[order.order_type] ?? 0;
+            return sum + (order.allocated_qty || 0) * prodPrice;
           }, 0);
         if (allocatedAmount + otherAllocated > customer.credit_limit) {
           setErrorMessage("Allocation exceeds customer's credit limit!");
@@ -183,11 +199,13 @@ function App() {
       <div className="flex flex-col gap-4">
         {displayedOrders.map((order) => {
           const product = products.find((p) => p.id === order.product_id);
+          const price = product?.price[order.order_type] ?? 0;
 
           const customerClosing = orders.reduce((sum, o) => {
             if (o.customer_id === order.customer_id) {
               const p = products.find((prod) => prod.id === o.product_id);
-              return sum + (o.allocated_qty || 0) * (p?.price || 0);
+              const pPrice = p?.price[o.order_type] ?? 0;
+              return sum + (o.allocated_qty || 0) * pPrice;
             }
             return sum;
           }, 0);
@@ -200,7 +218,7 @@ function App() {
               customerName={getCustomerName(order.customer_id)}
               productName={getProductName(order.product_id)}
               customerCredit={getCustomerCredit(order.customer_id)}
-              productPrice={product?.price || 0}
+              productPrice={price}
               customerClosing={customerClosing}
             />
           );

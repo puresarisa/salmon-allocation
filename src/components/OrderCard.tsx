@@ -43,6 +43,9 @@ const OrderCard: FC<OrderCardProps> = ({ order, onManualAllocate, customerName, 
       <div className="flex items-center mb-4">
         <h2 className="text-xl font-bold">ORDER-{order.id}</h2>
         {getOrderTypeTag()}
+        <p className="text-xl font-bold ml-4">
+          Order date: {new Date(order.order_date).toLocaleDateString("en-GB")}
+        </p>
       </div>
 
       <hr className="my-4 border-gray-200" />
