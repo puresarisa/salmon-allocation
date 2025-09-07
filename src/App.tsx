@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useInView } from "react-intersection-observer";
+import { HiOutlineRefresh } from "react-icons/hi";
 import {
   orders as mockOrders,
   products,
@@ -14,7 +15,8 @@ import OrderCard from "./components/OrderCard";
 import ErrorModal from "./components/ErrorModal";
 import "./index.css";
 
-const DEMO_RANDOMIZE = false;
+const DEMO_RANDOMIZE= false;
+const SHOW_REFRESH_BUTTON = false;
 
 function App() {
   const [orders, setOrders] = useState<typeof mockOrders>([]);
@@ -47,7 +49,7 @@ function App() {
   // --- Auto Allocation ---
   useEffect(() => {
     const sourceOrders =
-      DEMO_RANDOMIZE && versionKey > 0
+      DEMO_RANDOMIZE&& versionKey > 0
         ? getRandomizedOrders(sortedOrders)
         : sortedOrders;
 
@@ -180,12 +182,19 @@ function App() {
     <div className="flex flex-col gap-4 p-5 md:p-8 bg-[#FBFBFB] min-h-screen font-sans">
       <div className="flex flex-row justify-between items-center">
         <div className="text-3xl font-bold">Allocation</div>
-        {/* <button
-          className="mb-4 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 w-fit border-none"
-          onClick={() => setVersionKey((prev) => prev + 1)}
-        >
-          Refresh Data (versionKey: {versionKey})
-        </button> */}
+<div className="flex gap-2 items-end">
+{SHOW_REFRESH_BUTTON && (
+            <div className="flex flex-col items-end">
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-full shadow-mdtransition-colors duration-200 p-1 mb-2 bg-gray-300 text-white hover:bg-gray-400 border-none focus:ring-0"
+                onClick={() => setVersionKey((prev) => prev + 1)}
+              >
+                <HiOutlineRefresh className="text-xl text-white w-5 h-5" />
+              </button>
+              <p className="text-xs text-gray-500">versionKey: {versionKey}</p>
+            </div>
+          )}
+  </div>
       </div>
       <Header totalStock={totalStock} totalPrice={totalPrice} />
 

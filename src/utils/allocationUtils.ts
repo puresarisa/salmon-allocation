@@ -16,7 +16,7 @@ export function allocateOrders(
   let currentStock = initialStock;
   const tempOrders: Order[] = JSON.parse(JSON.stringify(sourceOrders));
 
-  //Sort orders: oldest first, then by priority
+  // Sort orders: oldest first, then by priority
   const sortedOrders = [...tempOrders].sort((a, b) => {
     const dateA = new Date(a.order_date).getTime();
     const dateB = new Date(b.order_date).getTime();
