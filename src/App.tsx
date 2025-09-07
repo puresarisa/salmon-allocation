@@ -59,7 +59,7 @@ function App() {
       orderPriority
     );
 
-    // Intelligent prefetching for initial loading
+    // --- Prefetching for initial loading --- 
     let visibleOrders: typeof mockOrders = [];
     let totalRequested = 0;
     let i = 0;
@@ -171,20 +171,22 @@ function App() {
       const timer = setTimeout(() => {
         setShowModal(false);
         setErrorMessage(null);
-      }, 3000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [showModal]);
 
   return (
-    <div className="flex flex-col gap-4 p-8 bg-gray-100 min-h-screen font-sans">
-      <div className="text-3xl font-bold mb-4">Allocation</div>
-      <button
-        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-fit"
-        onClick={() => setVersionKey((prev) => prev + 1)}
-      >
-        Refresh Data (versionKey: {versionKey})
-      </button>
+    <div className="flex flex-col gap-4 p-5 md:p-8 bg-[#FBFBFB] min-h-screen font-sans">
+      <div className="flex flex-row justify-between items-center">
+        <div className="text-3xl font-bold">Allocation</div>
+        {/* <button
+          className="mb-4 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 w-fit border-none"
+          onClick={() => setVersionKey((prev) => prev + 1)}
+        >
+          Refresh Data (versionKey: {versionKey})
+        </button> */}
+      </div>
       <Header totalStock={totalStock} totalPrice={totalPrice} />
 
       <ErrorModal
@@ -196,7 +198,7 @@ function App() {
         }}
       />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {displayedOrders.map((order) => {
           const product = products.find((p) => p.id === order.product_id);
           const price = product?.price[order.order_type] ?? 0;

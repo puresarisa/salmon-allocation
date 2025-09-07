@@ -16,18 +16,16 @@ export function allocateOrders(
   let currentStock = initialStock;
   const tempOrders: Order[] = JSON.parse(JSON.stringify(sourceOrders));
 
-  // Sort orders: oldest first, then by priority
+  //Sort orders: oldest first, then by priority
   const sortedOrders = [...tempOrders].sort((a, b) => {
     const dateA = new Date(a.order_date).getTime();
     const dateB = new Date(b.order_date).getTime();
-    if (dateA !== dateB) return dateA - dateB; // Oldest first
-    // If same date, prioritize by order type
+    if (dateA !== dateB) return dateA - dateB;
     const priorityA = orderPriority[a.order_type];
     const priorityB = orderPriority[b.order_type];
     return priorityA - priorityB;
   });
 
-  // Allocation logic uses sortedOrders instead of tempOrders
   // First Pass: Fair Allocation - give at least one item to each customer if possible
   sortedOrders.forEach(order => order.allocated_qty = 0);
 
@@ -79,6 +77,5 @@ export function allocateOrders(
     return { ...order, allocated_qty, suggested_qty: allocated_qty };
   });
 
-  // No need to sort again for display, as sortedOrders is already sorted
   return allocatedOrders;
 }

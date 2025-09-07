@@ -18,9 +18,9 @@ const Header: FC<HeaderProps> = ({ totalStock, totalPrice }) => {
 
 
   return (
-    <div className="text-xl font-semibold text-gray-700">
-      Salmon <span className="text-2xl font-bold text-gray-900">{formattedTotalStock}</span> Unit
-      <span className="ml-8">Total</span> <span className="text-2xl font-bold text-gray-900">{formattedTotalPrice}</span> THB
+    <div className="flex flex-col gap-1 justify-between text-xl font-medium text-black md:flex-row">
+      <div className="flex flex-row gap-[10px]">Salmon <span>{formattedTotalStock}</span> Unit</div>
+      <div className="flex flex-row gap-[10px]">Total <span>{formattedTotalPrice}</span> THB</div>
     </div>
   );
 };
